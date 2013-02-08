@@ -19,13 +19,14 @@ from traceback import print_exception
 
 # Import support vector classifier, feature selection and Pipeline from scikits.learn
 try:
-    from scikits.learn.svm import SVC
-    from scikits.learn import feature_selection
-    from scikits.learn.pipeline import Pipeline
-    from scikits.learn import __version__
-    if __version__ != '0.8':
-        logging.warn('SupportVectorMachine classifier requires scikits.learn '
-                     'version 0.8, you have version %s'%(__version__))
+    from sklearn.svm import SVC
+    from sklearn import feature_selection
+    from sklearn.pipeline import Pipeline
+    import sklearn
+    known_good_sklearn_version = '0.13'
+    if sklearn.__version__ != known_good_sklearn_version:
+        logging.warn('SupportVectorMachine classifier was tested with sklearn '
+                     'version %s, you have version %s' % (known_good_sklearn_version, sklearn.__version__))
     scikits_loaded = True
 except:
     # classifier.py checks this so developers don't have to install it if they don't want it.
@@ -251,9 +252,9 @@ class SupportVectorMachines(object):
         threads equal to the number of cores in the computer is used for the
         calculations
         '''
-        from scikits.learn.grid_search import GridSearchCV
-        from scikits.learn.metrics import precision_score
-        from scikits.learn.cross_val import StratifiedKFold
+        from sklearn.grid_search import GridSearchCV
+        from sklearn.metrics import precision_score
+        from sklearn.cross_validation import StratifiedKFold
         # 
         # XXX: program crashes with >1 worker when running cpa.py
         #      No crash when running from classifier.py. Why?
@@ -269,6 +270,7 @@ class SupportVectorMachines(object):
         parameters = {'C': 2**np.arange(-5,11,2, dtype=float),
                       'gamma': 2**np.arange(3,-11,-2, dtype=float)}                
         clf = GridSearchCV(SVC(kernel='rbf'), parameters, n_jobs=n_workers, score_func=precision_score)
+        import pdb; pdb.set_trace()
         clf.fit(self.svm_train_values, self.svm_train_labels, 
                 cv=StratifiedKFold(self.svm_train_labels, nValidation))
 
