@@ -5,6 +5,11 @@ import numpy as np
 from sys import stdin, stdout, argv, exit
 from time import time
 
+
+
+# The following functions implement the core Fast Gentle Boosting
+# training.
+
 def train_weak_learner(labels, weights, values):
     ''' For a multiclass training set, with C classes and N examples,
     finds the optimal weak learner in O(M * N logN) time.
@@ -382,27 +387,31 @@ class FastGentleBoosting(object):
     def UpdateBins(self, classBins):
         self.classBins = classBins
 
-    def Usage(self, name):
-        print "usage %s:" % (name)
-        print "%s num_learners              - read from stdin, write to stdout" % (name)
-        print "%s num_learners file         - read from file, write to stdout" % (name)
-        print "%s num_learners file1 file2  - read from file1, write to file2" % (name)
-        print ""
-        print "Input files should be tab delimited."
-        print "Example:"
-        print "ClassLabel	Value1_name	Value2_name	Value3_name"
-        print "2	0.1	0.3	1.5"
-        print "1	0.5	-0.3	0.5"
-        print "3	0.1	1.0	0.5"
-        print ""
-        print "Labels should be positive integers."
-        print "Note that if one learner is sufficient, only one will be written."
-        exit(1)
-
     def XValidate(self, colnames, num_learners, label_matrix, values, folds, group_labels, progress_callback):
         return crossvalidate(colnames, num_learners, label_matrix, values, 
                              folds, group_labels, progress_callback)
 
+
+
+# Script for training Fast Gentle Boosting classifier without using
+# the rest of CPA or its data structures and data formats.
+
+def usage(name):
+    print "usage %s:" % (name)
+    print "%s num_learners              - read from stdin, write to stdout" % (name)
+    print "%s num_learners file         - read from file, write to stdout" % (name)
+    print "%s num_learners file1 file2  - read from file1, write to file2" % (name)
+    print ""
+    print "Input files should be tab delimited."
+    print "Example:"
+    print "ClassLabel	Value1_name	Value2_name	Value3_name"
+    print "2	0.1	0.3	1.5"
+    print "1	0.5	-0.3	0.5"
+    print "3	0.1	1.0	0.5"
+    print ""
+    print "Labels should be positive integers."
+    print "Note that if one learner is sufficient, only one will be written."
+    exit(1)
 
 if __name__ == '__main__':
     fgb = FastGentleBoosting()
@@ -417,7 +426,7 @@ if __name__ == '__main__':
         fin = open(argv[2])
         fout = open(argv[3], 'w')
     else:
-        fgb.usage(argv[0])
+        usage(argv[0])
 
     num_learners = int(argv[1])
     assert num_learners > 0
