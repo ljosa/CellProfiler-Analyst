@@ -236,7 +236,7 @@ class Classifier(wx.Frame):
 
         # JK - Start Add
         # Define the classification algorithms and set the default to Fast Gentle Boosting
-        self.algorithm = FastGentleBoosting(self)
+        self.algorithm = FastGentleBoosting()
         self.complexityTxt.SetLabel(self.algorithm.ComplexityTxt())
         self.algorithms = {
             'fastgentleboosting': FastGentleBoosting,
@@ -303,11 +303,11 @@ class Classifier(wx.Frame):
     def AlgorithmSelect(self, event):
         selectedItem = re.sub('[\W_]+', '', self.classifierMenu.FindItemById(event.GetId()).GetText())
         try:
-            self.algorithm =  self.algorithms[selectedItem.lower()](self)
+            self.algorithm =  self.algorithms[selectedItem.lower()]()
         except:
             # Fall back to default algorithm
             logging.error('Could not load specified algorithm, falling back to default.')
-            self.algorithm = FastGentleBoosting(self)
+            self.algorithm = FastGentleBoosting()
 
         # Update the GUI complexity text and classifier description
         self.complexityTxt.SetLabel(self.algorithm.ComplexityTxt())
@@ -962,7 +962,7 @@ class Classifier(wx.Frame):
             self.SetStatusText('No such image.')
 
     def OnCheckProgress(self, evt):
-        self.algorithm.CheckProgress()
+        self.algorithm.CheckProgress(self)
 
     def UpdateTrainingSet(self):
         # pause tile loading

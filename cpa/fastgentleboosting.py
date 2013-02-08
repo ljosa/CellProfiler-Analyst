@@ -1,8 +1,4 @@
-try:
-    import cellprofiler.gui.cpfigure as cpfig
-except: pass
 import re
-import dbconnect
 import logging
 import multiclasssql
 import numpy as np
@@ -10,31 +6,37 @@ from sys import stdin, stdout, argv, exit
 from time import time
 
 class FastGentleBoosting(object):
-    def __init__(self, classifier = None):
+    def __init__(self):
         logging.info('Initialized New Fast Gentle Boosting Classifier')
         self.model = None
         self.classBins = []
-        self.classifier = classifier
 
-    def CheckProgress(self):
+    def CheckProgress(self, classifier):
+        try:
+            import cellprofiler.gui.cpfigure as cpfig
+        except: 
+            pass
         import wx
+        import dbconnect
         ''' Called when the CheckProgress Button is pressed. '''
         # get wells if available, otherwise use imagenumbers
         try:
-            nRules = int(self.classifier.nRulesTxt.GetValue())
+            nRules = int(classifier.nRulesTxt.GetValue())
         except:
             logging.error('Unable to parse number of rules')
             return
 
-        if not self.classifier.UpdateTrainingSet():
+        if not classifier.UpdateTrainingSet():
             self.PostMessage('Cross-validation canceled.')
             return
         
         db = dbconnect.DBConnect.getInstance()
-        groups = [db.get_platewell_for_object(key) for key in self.classifier.trainingSet.get_object_keys()]
+        groups = [db.get_platewell_for_object(key) for key in classifier.trainingSet.get_object_keys()]
 
         t1 = time()
-        dlg = wx.ProgressDialog('Computing cross validation accuracy...', '0% Complete', 100, self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)        
+        dlg = wx.ProgressDialog('Computing cross validation accuracy...', 
+                                '0% Complete', 100, classifier, 
+                                wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
         base = 0.0
         scale = 1.0
 
@@ -44,7 +46,7 @@ class FastGentleBoosting(object):
         def progress_callback(amount):
             pct = min(int(100 * (amount * scale + base)), 100)
             cont, skip = dlg.Update(pct, '%d%% Complete'%(pct))
-            self.classifier.PostMessage('Computing cross validation accuracy... %s%% Complete'%(pct))
+            classifier.PostMessage('Computing cross validation accuracy... %s%% Complete' % pct)
             if not cont:
                 raise StopXValidation
 
@@ -59,8 +61,9 @@ class FastGentleBoosting(object):
             for i in range(10):
                 # JK - Start Modification
                 xvalid_50 += self.XValidate(
-                    self.classifier.trainingSet.colnames, nRules, self.classifier.trainingSet.label_matrix,
-                    self.classifier.trainingSet.values, 2, groups, progress_callback
+                    classifier.trainingSet.colnames, nRules, 
+                    classifier.trainingSet.label_matrix,
+                    classifier.trainingSet.values, 2, groups, progress_callback
                 )
                 # JK - End Modification
 
@@ -72,19 +75,19 @@ class FastGentleBoosting(object):
             scale = 1.0 - base
             # JK - Start Modification
             xvalid_95 = self.XValidate(
-                self.classifier.trainingSet.colnames, nRules, self.classifier.trainingSet.label_matrix,
-                self.classifier.trainingSet.values, 20, groups, progress_callback
+                classifier.trainingSet.colnames, nRules, classifier.trainingSet.label_matrix,
+                classifier.trainingSet.values, 20, groups, progress_callback
             )
             # JK - End Modification
 
             dlg.Destroy()
-            figure = cpfig.create_or_find(self.classifier, -1, 'Cross-validation accuracy', subplots=(1,1), name='Cross-validation accuracy')
+            figure = cpfig.create_or_find(classifier, -1, 'Cross-validation accuracy', subplots=(1,1), name='Cross-validation accuracy')
             sp = figure.subplot(0,0)
             sp.clear()
             sp.hold(True)
             sp.plot(range(1, nRules + 1), 1.0 - xvalid_50 / float(len(groups)), 'r', label='50% cross-validation accuracy')
             sp.plot(range(1, nRules + 1), 1.0 - xvalid_95[0] / float(len(groups)), 'b', label='95% cross-validation accuracy')
-            chance_level = 1.0 / len(self.classifier.trainingSet.labels)
+            chance_level = 1.0 / len(classifier.trainingSet.labels)
             sp.plot([1, nRules + 1], [chance_level, chance_level], 'k--', label='accuracy of random classifier')
             sp.legend(loc='lower right')
             sp.set_xlabel('Rule #')
@@ -92,7 +95,7 @@ class FastGentleBoosting(object):
             sp.set_xlim(1, max(nRules,2))
             sp.set_ylim(-0.05, 1.05)
             figure.Refresh()
-            self.classifier.PostMessage('Cross-validation complete in %.1fs.'%(time()-t1))
+            classifier.PostMessage('Cross-validation complete in %.1fs.'%(time()-t1))
         except StopXValidation:
             dlg.Destroy()
 

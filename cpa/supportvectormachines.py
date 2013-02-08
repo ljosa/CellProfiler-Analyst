@@ -64,11 +64,10 @@ class SupportVectorMachines(object):
     '''
     Class to define a complete support vector machine classifier calculation problem. 
     '''    
-    def __init__(self, classifier = None):
+    def __init__(self):
         logging.info('Initialized New Support Vector Machines Classifier')
         self.model = None 
         self.classBins = []
-        self.classifier = classifier
         self.percentile = 90
 
         # Initialize the total object storage
@@ -76,7 +75,7 @@ class SupportVectorMachines(object):
         self.feat_min, self.feat_max = None, None
         self.svm_train_labels, self.svm_train_values = None, None
 
-    def CheckProgress(self):
+    def CheckProgress(self, classifier):
         # Calculate cross-validation data
         nPermutations = 10
         try:
@@ -91,22 +90,22 @@ class SupportVectorMachines(object):
                 [misclassifications[i]+[val]*(nPermutations-len(misclassifications[i]))
                  for i, val in enumerate(self.svm_train_labels)]
             )
-            self.classifier.ShowConfusionMatrix(confusionMatrix, axes)
+            classifier.ShowConfusionMatrix(confusionMatrix, axes)
 
         def dimensionReduction():
             # Initialize PCA/tSNE plot
-            pca_main = dr.PlotMain(self.classifier, properties = Properties.getInstance(), loadData = False)
-            pca_main.set_data(self.classifier.trainingSet.values,
+            pca_main = dr.PlotMain(classifier, properties = Properties.getInstance(), loadData = False)
+            pca_main.set_data(classifier.trainingSet.values,
                               dict([(index, object) for index, object in 
-                                    enumerate(self.classifier.trainingSet.get_object_keys())]),
-                              np.int64(self.classifier.trainingSet.label_matrix > 0),
-                              self.classifier.trainingSet.labels,
+                                    enumerate(classifier.trainingSet.get_object_keys())]),
+                              np.int64(classifier.trainingSet.label_matrix > 0),
+                              classifier.trainingSet.labels,
                               np.array([len(misclassifications[i])/float(nPermutations) for i in xrange(len(misclassifications))]).round(2))
             pca_main.Show(True)
 
         # Ask how the user wants to visualize the cross-validation results (either through
         # a confusion matrix or visually in a dimension reductionality plot)
-        visualizationChoiceBox(self.classifier, -1, 'Pick cross-validation visualization', confusionMatrix, dimensionReduction)
+        visualizationChoiceBox(classifier, -1, 'Pick cross-validation visualization', confusionMatrix, dimensionReduction)
 
     def ClearModel(self):
         # Clear all parameters related to the trained classifier
@@ -397,7 +396,7 @@ class SupportVectorMachines(object):
 
     def XValidate(self, nPermutations):
         # Make sure all data is available in the training set
-        if not self.classifier.UpdateTrainingSet():
+        if not classifier.UpdateTrainingSet():
             return
 
         # Initialize process dialog
@@ -408,7 +407,7 @@ class SupportVectorMachines(object):
                 raise StopCalculating()
 
         dlg = wx.ProgressDialog('Performing grid search for optimal parameters...', '0% Complete', 100,
-                                self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | 
+                                classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | 
                                 wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
 
         # Define cross validation parameters
@@ -418,8 +417,8 @@ class SupportVectorMachines(object):
         # Convert the training set into SVM format and search for optimal parameters
         # C and gamma using 5-fold cross-validation
         logging.info('Performing grid search for parameters C and gamma on entire training set...')
-        self.TranslateTrainingSet(self.classifier.trainingSet.label_matrix, 
-                                  self.classifier.trainingSet.values)
+        self.TranslateTrainingSet(classifier.trainingSet.label_matrix, 
+                                  classifier.trainingSet.values)
         C, gamma = self.ParameterGridSearch(callback=cb)
         dlg.Destroy()
         logging.info('Grid search completed. Found optimal C=%d and gamma=%f.' % (C, gamma))
@@ -428,7 +427,7 @@ class SupportVectorMachines(object):
         classifier = Pipeline([('anova', feature_selection.SelectPercentile(feature_selection.f_classif,
                                                                             percentile=self.percentile)),
                                ('svc', SVC(kernel='rbf', C=C, gamma=gamma, eps=0.1))])
-        nObjects = self.classifier.trainingSet.label_matrix.shape[0]
+        nObjects = classifier.trainingSet.label_matrix.shape[0]
         subsetSize = np.ceil(nObjects / float(totalGroups))
         indices = np.arange(nObjects)
         misclassifications = [[] for i in range(nObjects)]
@@ -447,7 +446,7 @@ class SupportVectorMachines(object):
                      (nPermutations, trainingGroups/float(totalGroups)*100, \
                      (1-trainingGroups/float(totalGroups))*100))
         dlg = wx.ProgressDialog('Calculating average cross-validation accuracy...', '0% Complete', 100,
-                                self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | 
+                                classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | 
                                 wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
         nTrainingTotalGroups = len(trainingTotalGroups)
         nOperations = float(nPermutations * nTrainingTotalGroups)
