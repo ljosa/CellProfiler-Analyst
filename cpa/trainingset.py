@@ -15,9 +15,8 @@ db = DBConnect.getInstance()
 class TrainingSet:
     "A class representing a set of manually labeled cells."
 
-    def __init__(self, properties, filename='', labels_only=False):
-        self.properties = properties
-        self.colnames = db.GetColnamesForClassifier()
+    def __init__(self, filename='', labels_only=False, colnames=None):
+        self.colnames = colnames or db.GetColnamesForClassifier()
         self.filename = filename
         self.cache = CellCache.getInstance()
         if filename != '':
@@ -235,7 +234,7 @@ if __name__ == "__main__":
     from properties import Properties
     p = Properties.getInstance()
     p.LoadFile(argv[1])
-    tr = TrainingSet(p)
+    tr = TrainingSet()
     tr.Load(argv[2])
     for i in range(len(tr.labels)):
         print tr.labels[i],

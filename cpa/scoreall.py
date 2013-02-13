@@ -231,7 +231,7 @@ if __name__ == "__main__":
     p = Properties.getInstance()
     p.LoadFile(props_file)
     logging.info('Loading training set...')
-    ts = TrainingSet(p)
+    ts = TrainingSet()
     ts.Load(ts_file)
 
     score(p, ts, nRules, filter_name, group, show_results=True,

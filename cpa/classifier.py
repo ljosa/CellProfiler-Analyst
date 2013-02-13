@@ -880,7 +880,7 @@ class Classifier(wx.Frame):
             # wx.FD_CHANGE_DIR doesn't seem to work in the FileDialog, so I do it explicitly
             self.defaultTSFileName = os.path.basename(filename)
 
-            self.trainingSet = TrainingSet(p, filename, labels_only=True)
+            self.trainingSet = TrainingSet(filename, labels_only=True)
 
             self.RemoveAllSortClasses()
             for label in self.trainingSet.labels:
@@ -913,7 +913,7 @@ class Classifier(wx.Frame):
     
     def SaveTrainingSetAs(self, filename):
         classDict = {}
-        self.trainingSet = TrainingSet(p)
+        self.trainingSet = TrainingSet()
         self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
         self.trainingSet.Save(filename)
         
@@ -975,7 +975,7 @@ class Classifier(wx.Frame):
                         raise StopCalculating()
 
                 dlg = wx.ProgressDialog('Fetching cell data for training set...', '0% Complete', 100, self, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
-                self.trainingSet = TrainingSet(p)
+                self.trainingSet = TrainingSet()
                 self.trainingSet.Create(labels = [bin.label for bin in self.classBins],
                                         keyLists = [bin.GetObjectKeys() for bin in self.classBins],
                                         callback=cb)

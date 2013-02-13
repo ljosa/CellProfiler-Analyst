@@ -91,7 +91,7 @@ if __name__ == "__main__":
         logging.info('Loading properties file...')
         p.load_file(props_file)
         logging.info('Loading training set...')
-        ts = TrainingSet(p)
+        ts = TrainingSet()
         ts.Load(ts_file)
         
         data = score(p, ts, nRules, filter_name, group)

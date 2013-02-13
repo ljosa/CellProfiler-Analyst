@@ -273,7 +273,7 @@ if __name__ == "__main__":
 #    filter = 'afraser_test'
     
     p.LoadFile(props)
-    trainingSet = TrainingSet(p)
+    trainingSet = TrainingSet()
     trainingSet.Load(ts)
     output = StringIO()
     print 'Training classifier with '+str(nRules)+' rules...'
