@@ -70,7 +70,6 @@ class TrainingSet:
         self.label_matrix = numpy.array(self.label_matrix)
         self.values = numpy.array(self.values, np.float64)
 
-
     def Load(self, filename, labels_only=False):
         self.Clear()
         f = open(filename, 'U')
@@ -180,6 +179,26 @@ class TrainingSet:
 
     def get_object_keys(self):
         return [e[1] for e in self.entries]
+
+    def one_vs_all(self):
+        """
+        Return a list of one-vs-all classifiers, one for each
+        class.
+
+        """
+        nclasses = len(self.labels)
+        assert nclasses >= 2
+        indices = [list(row).index(1) for row in self.label_matrix]
+        training_sets = []
+        for i, cls in enumerate(self.labels):
+            cls = self.labels[i]
+            pos_keys = [k for c, k in self.entries if c == cls]
+            neg_keys = [k for c, k in self.entries if c != cls]
+            ts = TrainingSet()
+            ts.Create([cls, 'not_' + cls], [pos_keys, neg_keys])
+            training_sets.append(ts)
+        return training_sets
+
 
 class CellCache(Singleton):
     ''' caching front end for holding cell data '''

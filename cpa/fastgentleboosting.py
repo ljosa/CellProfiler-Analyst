@@ -207,8 +207,59 @@ def crossvalidate(colnames, num_learners, label_matrix, values, folds, group_lab
 
     return [num_misclassifications]
 
+#
+# The following functions implement serializaton and deserialization
+# of boosting classifiers to a human-readable format and back again.
+#
+
+def render_weak_learner(colname, thresh, a, b, e_m):
+    return "IF (%s > %s, %s, %s)" % (
+        colname, repr(thresh),
+        "[" + ", ".join([repr(v) for v in a]) + "]",
+        "[" + ", ".join([repr(v) for v in b]) + "]")
+
+def render_boosting_classifier(weak_learners):
+    '''
+    Transforms the weak learners of the algorithm into a human readable
+    representation
+
+    '''
+    if weak_learners is None or len(weak_learners) == 0:
+        return None
+    else:
+        return '\n'.join([render_weak_learner(*wl)
+                          for wl in weak_learners])
+
+def parse_boosting_classifier(string):
+    model = []
+    string = string.replace('\r\n', '\n')
+    for line in string.split('\n'):
+        if line.strip() == '':
+            continue
+        m = re.match('^IF \((\w+) > (-{0,1}\d+\.\d+), \[(-{0,1}\d+\.\d+(?:, -{0,1}\d+\.\d+)*)\], \[(-{0,1}\d+\.\d+(?:, -{0,1}\d+\.\d+)*)\]\)',
+                     line, flags=re.IGNORECASE)
+        if m is None:
+            raise ValueError
+        colname, thresh, a, b = m.groups()
+        thresh = float(thresh)
+        a = map(float, a.split(','))
+        b = map(float, b.split(','))
+        if len(a) != len(b):
+            raise ValueError, 'Alpha and beta must have the same cardinality in "IF (column > threshold, alpha, beta)"'
+        model.append((colname, thresh, a, b, None))
+    n_classes = len(model[0][2])
+    for wl in model:
+        if len(wl[2]) != n_classes:
+            raise ValueError, 'Number of classes must remain the same between rules.'
+    return model
+
+
 
 class FastGentleBoosting(object):
+    """
+    Abstract base class.
+
+    """
     def __init__(self):
         logging.info('Initialized New Fast Gentle Boosting Classifier')
         self.model = None
@@ -312,11 +363,21 @@ class FastGentleBoosting(object):
     def CreatePerObjectClassTable(self, labels):
         multiclasssql.create_perobject_class_table(labels, self.model)
 
-    def FilterObjectsFromClassN(self, obClass, obKeysToTry):
-        return multiclasssql.FilterObjectsFromClassN(obClass, self.model, obKeysToTry)
-
     def IsTrained(self):
         return self.model is not None
+
+    def UpdateBins(self, classBins):
+        self.classBins = classBins
+
+    def XValidate(self, colnames, num_learners, label_matrix, values, folds, group_labels, progress_callback):
+        return crossvalidate(colnames, num_learners, label_matrix, values, 
+                             folds, group_labels, progress_callback)
+
+
+class FastGentleBoostingMulticlass(FastGentleBoosting):
+
+    def FilterObjectsFromClassN(self, obClass, obKeysToTry):
+        return multiclasssql.FilterObjectsFromClassN(obClass, self.model, obKeysToTry)
 
     def LoadModel(self, model_filename):
         import cPickle
@@ -332,26 +393,7 @@ class FastGentleBoosting(object):
             fh.close()
 
     def ParseModel(self, string):
-        self.model = []
-        string = string.replace('\r\n', '\n')
-        for line in string.split('\n'):
-            if line.strip() == '':
-                continue
-            m = re.match('^IF \((\w+) > (-{0,1}\d+\.\d+), \[(-{0,1}\d+\.\d+(?:, -{0,1}\d+\.\d+)*)\], \[(-{0,1}\d+\.\d+(?:, -{0,1}\d+\.\d+)*)\]\)',
-                         line, flags=re.IGNORECASE)
-            if m is None:
-                raise ValueError
-            colname, thresh, a, b = m.groups()
-            thresh = float(thresh)
-            a = map(float, a.split(','))
-            b = map(float, b.split(','))
-            if len(a) != len(b):
-                raise ValueError, 'Alpha and beta must have the same cardinality in "IF (column > threshold, alpha, beta)"'
-            self.model.append((colname, thresh, a, b, None))
-        n_classes = len(self.model[0][2])
-        for wl in self.model:
-            if len(wl[2]) != n_classes:
-                raise ValueError, 'Number of classes must remain the same between rules.'
+        self.model = parse_boosting_classifier(string)
         return self.model
 
     def PerImageCounts(self, filter_name=None, cb=None):
@@ -364,32 +406,47 @@ class FastGentleBoosting(object):
         fh.close()
 
     def ShowModel(self):
-        '''
-        Transforms the weak learners of the algorithm into a human readable
-        representation
-        '''
-        if self.model is not None and self.model is not []:
-            return '\n'.join("IF (%s > %s, %s, %s)" %(colname, repr(thresh),
-                             "[" + ", ".join([repr(v) for v in a]) + "]",
-                             "[" + ", ".join([repr(v) for v in b]) + "]")
-                        for colname, thresh, a, b, e_m in self.model)
-        else:
-            return ''
+        return render_boosting_classifier(self.model)
 
-    def Train(self, colnames, num_learners, label_matrix, values, fout=None, 
-              do_prof=False, test_values=None, callback=None):
-        self.model, holdout_results = train(colnames, num_learners, label_matrix,
-                                            values, fout=fout, do_prof=do_prof,
-                                            test_values=test_values, 
-                                            callback=callback)
-        return holdout_results
+    def Train(self, training_set, num_learners, fout=None, callback=None):
+        self.model, holdout_results = train(training_set.colnames, num_learners, 
+                                            training_set.label_matrix,
+                                            training_set.values, 
+                                            fout=fout, callback=callback)
+        return self.model
 
-    def UpdateBins(self, classBins):
-        self.classBins = classBins
 
-    def XValidate(self, colnames, num_learners, label_matrix, values, folds, group_labels, progress_callback):
-        return crossvalidate(colnames, num_learners, label_matrix, values, 
-                             folds, group_labels, progress_callback)
+class FastGentleBoostingOneVsAll(FastGentleBoosting):
+
+    def FilterObjectsFromClassN(self, obClass, obKeysToTry):
+        model = self.model[obClass]
+        return multiclasssql.FilterObjectsFromClassN(obClass, model, 
+                                                     obKeysToTry)
+
+    def ParseModel(self, string):
+        self.model = [parse_boosting_classifier(s) 
+                      for s in string.split('\n----\n')]
+        return self.model
+
+    def ShowModel(self):
+        print repr(self.model)
+        return '\n----\n'.join([render_boosting_classifier(classifier)
+                              for classifier in self.model])
+
+    def Train(self, training_set, num_learners, fout=None, callback=None):
+        model, holdout_results = train(training_set.colnames, num_learners, 
+                                       training_set.label_matrix,
+                                       training_set.values, 
+                                       fout=fout, callback=callback)
+        self.model = [model]
+        for ts in training_set.one_vs_all():
+            model, holdout_results = train(ts.colnames, num_learners, 
+                                           ts.label_matrix,
+                                           ts.values, 
+                                           fout=fout, callback=callback)
+            self.model.append(model)
+
+        return self.model
 
 
 
@@ -463,8 +520,10 @@ if __name__ == '__main__':
     for i, j in zip(range(len(labels)), np.array(labels)-1):
         label_matrix[i, j] = 1
 
-    wl = fgb.Train(colnames, num_learners, label_matrix, values, fout)
-    for w in wl:
+    ts = TrainingSet(colnames=colnames)
+
+    weak_learners = fgb.Train(ts, num_learners, fout)
+    for w in weak_learners:
         print w
     print label_matrix.shape, "groups"
     print fgb.xvalidate(colnames, num_learners, label_matrix, values, 20, range(1, label_matrix.shape[0]+1), None)

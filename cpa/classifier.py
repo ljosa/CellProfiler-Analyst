@@ -30,7 +30,7 @@ import sys
 import wx
 import re
 from supportvectormachines import SupportVectorMachines, scikits_loaded
-from fastgentleboosting import FastGentleBoosting
+from fastgentleboosting import FastGentleBoostingMulticlass, FastGentleBoostingOneVsAll
 from dimensredux import PlotMain
 
 # number of cells to classify before prompting the user for whether to continue
@@ -236,10 +236,11 @@ class Classifier(wx.Frame):
 
         # JK - Start Add
         # Define the classification algorithms and set the default to Fast Gentle Boosting
-        self.algorithm = FastGentleBoosting()
+        self.algorithm = FastGentleBoostingMulticlass()
         self.complexityTxt.SetLabel(self.algorithm.ComplexityTxt())
         self.algorithms = {
-            'fastgentleboosting': FastGentleBoosting,
+            'fastgentleboostingmulticlass': FastGentleBoostingMulticlass,
+            'fastgentleboostingonevsall': FastGentleBoostingOneVsAll,
             'supportvectormachines': SupportVectorMachines
         }
         # JK - End Add
@@ -307,7 +308,7 @@ class Classifier(wx.Frame):
         except:
             # Fall back to default algorithm
             logging.error('Could not load specified algorithm, falling back to default.')
-            self.algorithm = FastGentleBoosting()
+            self.algorithm = FastGentleBoostingMulticlass()
 
         # Update the GUI complexity text and classifier description
         self.complexityTxt.SetLabel(self.algorithm.ComplexityTxt())
@@ -398,14 +399,13 @@ class Classifier(wx.Frame):
         # Channel Menus
         self.CreateChannelMenus()
 
-        # JK - Start Add
         # Classifier Type chooser
         self.classifierMenu = wx.Menu();
         fgbMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
+        fgb1vsallMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting (one vs. all)', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
         if scikits_loaded:
             svmMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Support Vector Machines', help='User Support Vector Machines to find classifier rules.')
         self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
-        # JK - End Add
 
         # Bind events to different menu items
         self.Bind(wx.EVT_MENU, self.OnLoadTrainingSet, self.loadTSMenuItem)
@@ -414,9 +414,10 @@ class Classifier(wx.Frame):
 ##        self.Bind(wx.EVT_MENU, self.SaveModel, self.saveModelMenuItem) # JEN - Added
         self.Bind(wx.EVT_MENU, self.OnShowImageControls, imageControlsMenuItem)
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
-        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) # JK - Added
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgb1vsallMenuItem)
         if scikits_loaded:
-            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) # JK - Added
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem)
 
     def CreateChannelMenus(self):
         ''' Create color-selection menus for each channel. '''
@@ -1019,13 +1020,7 @@ class Classifier(wx.Frame):
                 t1 = time()
                 output = StringIO()
                 dlg = wx.ProgressDialog('Training classifier...', '0% Complete', 100, self, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
-                # JK - Start Modification
-                # Train the desired algorithm
-                self.algorithm.Train(
-                    self.trainingSet.colnames, nRules, self.trainingSet.label_matrix,
-                    self.trainingSet.values, output, callback=cb
-                )
-                # JK - End Modification
+                self.algorithm.Train(self.trainingSet, nRules, output, callback=cb)
 
                 self.PostMessage('Classifier trained in %.1fs.' % (time()-t1))
                 dlg.Destroy()
