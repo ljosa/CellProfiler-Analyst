@@ -420,7 +420,7 @@ class FastGentleBoostingOneVsAll(FastGentleBoosting):
 
     def FilterObjectsFromClassN(self, obClass, obKeysToTry):
         model = self.model[obClass]
-        return multiclasssql.FilterObjectsFromClassN(obClass, model, 
+        return multiclasssql.FilterObjectsFromClassN(1, model, 
                                                      obKeysToTry)
 
     def ParseModel(self, string):
