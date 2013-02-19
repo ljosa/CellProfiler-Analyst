@@ -49,9 +49,9 @@ for dest, paths in DATA_FILES:
 OPTIONS = {'argv_emulation': True,
            'iconfile' : "icons/cpa.icns",
            'includes' : [ 'scipy.sparse'],
-           'packages' : ['numpy', './icons', 'bioformats', 'killjavabridge', ],
+           'packages' : ['numpy', 'icons', 'bioformats', 'killjavabridge', 'imagej'],
            'excludes' : ['nose', 'wx.tools', 'Cython', 'pylab', 'Tkinter',
-                         'scipy.weave', 'imagej'],
+                         'scipy.weave'],
            'resources' : [],
           }
 
