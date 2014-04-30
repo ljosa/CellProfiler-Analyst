@@ -11,18 +11,25 @@ if not hasattr(itertools, 'compress'):
 
 logger = logging.getLogger(__name__)
 
+
 class InputError(Exception):
     def __init__(self, filename, message, line=None):
         self.filename = filename
         self.message = message
         self.line = line
-
-    def __unicode__(self):
+        
+    def __str__(self):
         if self.line is None:
-            print >>sys.stderr, '%s: Error: %s' % (self.filename, self.message)
+            return '%s: Error: %s' % (self.filename, self.message)
         else:
-            print >>sys.stderr, '%s:%d: Error: %s' % (self.filename, self.line, 
-                                                      self.message)
+            return '%s:%d: Error: %s' % (self.filename, self.line,
+                                         self.message)
+        
+    def __repr__(self):
+        return '%s(%s, %s, line=%s)' % (self.__class__.__name__,
+                                        repr(self.filename),
+                                        repr(self.message), repr(self.line))
+        
 
 class Profiles(object):
     def __init__(self, keys, data, variables, key_size=None, group_name=None, group_header=None):
