@@ -155,7 +155,7 @@ class Cache(object):
             if(len(features) > 0):
                 stackedfeatures = np.vstack(features)
                 if not flag_bkwd:
-                    stackedcellids = np.squeeze(np.hstack(cellids))
+                    stackedcellids = np.hstack(cellids)
             else:
                 stackedfeatures = np.array([])
                 if not flag_bkwd:
